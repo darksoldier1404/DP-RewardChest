@@ -66,7 +66,7 @@ public class DPRCFunction {
             sender.sendMessage(prefix + lang.get("not_player"));
             return;
         }
-        DInventory inv = new DInventory(null, lang.getWithArgs("reward_chest_items_title", name), 54, plugin);
+        DInventory inv = new DInventory(lang.getWithArgs("reward_chest_items_title", name), 54, plugin);
         YamlConfiguration rewardChestConfig = rewardChests.get(name);
         if (rewardChestConfig.getConfigurationSection("Items") != null) {
             for (String itemKey : rewardChestConfig.getConfigurationSection("Items").getKeys(false)) {
@@ -109,7 +109,7 @@ public class DPRCFunction {
             sender.sendMessage(prefix + lang.get("not_player"));
             return;
         }
-        DInventory inv = new DInventory(null, lang.getWithArgs("reward_chest_weight_title", name), 54, plugin);
+        DInventory inv = new DInventory(lang.getWithArgs("reward_chest_weight_title", name), 54, plugin);
         YamlConfiguration rewardChestConfig = rewardChests.get(name);
         if (rewardChestConfig.getConfigurationSection("Items") != null) {
             for (String itemKey : rewardChestConfig.getConfigurationSection("Items").getKeys(false)) {
@@ -191,7 +191,7 @@ public class DPRCFunction {
             sender.sendMessage(prefix + lang.get("not_player"));
             return;
         }
-        DInventory inv = new DInventory(null, lang.getWithArgs("reward_chest_key_title", name), 27, plugin);
+        DInventory inv = new DInventory(lang.getWithArgs("reward_chest_key_title", name), 27, plugin);
         YamlConfiguration rewardChestConfig = rewardChests.get(name);
         ItemStack pane = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta paneMeta = pane.getItemMeta();
@@ -206,7 +206,7 @@ public class DPRCFunction {
         if (rewardChestConfig.getConfigurationSection("Key") != null) {
             ItemStack keyItem = rewardChestConfig.getItemStack("Key.item");
             inv.setItem(13, keyItem);
-        }else{
+        } else {
             inv.setItem(13, null);
         }
         inv.setChannel(3);

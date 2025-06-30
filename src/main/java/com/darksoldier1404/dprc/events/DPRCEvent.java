@@ -20,8 +20,8 @@ import static com.darksoldier1404.dprc.RewardChest.*;
 public class DPRCEvent implements Listener {
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent e) {
-        if (e.getInventory() instanceof DInventory) {
-            DInventory inv = (DInventory) e.getInventory();
+        if (e.getInventory().getHolder() instanceof DInventory) {
+            DInventory inv = (DInventory) e.getInventory().getHolder();
             if (inv.isValidHandler(plugin)) {
                 if (inv.getChannel() == 1) { // item set
                     DPRCFunction.saveRewardChestItems((String) inv.getObj(), inv);
@@ -36,8 +36,8 @@ public class DPRCEvent implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent e) {
-        if (e.getInventory() instanceof DInventory) {
-            DInventory inv = (DInventory) e.getInventory();
+        if (e.getInventory().getHolder() instanceof DInventory) {
+            DInventory inv = (DInventory) e.getInventory().getHolder();
             if (inv.isValidHandler(plugin)) {
                 ItemStack currentItem = e.getCurrentItem();
                 if (currentItem == null || currentItem.getType().isAir()) {
