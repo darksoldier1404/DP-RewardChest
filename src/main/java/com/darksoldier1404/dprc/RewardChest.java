@@ -7,6 +7,7 @@ import com.darksoldier1404.dppc.utils.Tuple;
 import com.darksoldier1404.dprc.commands.DPRCCommand;
 import com.darksoldier1404.dprc.events.DPRCEvent;
 import com.darksoldier1404.dprc.functions.DPRCFunction;
+import org.bukkit.Location;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -20,6 +21,7 @@ public class RewardChest extends JavaPlugin {
     public static Map<String, YamlConfiguration> rewardChests = new HashMap<>();
     public static Map<UUID, Tuple<DInventory, Integer>> currentChanceEdit = new HashMap<>();
     public static Set<UUID> currentlyRoll = new HashSet<>();
+    public static Location defaultOffset;
 
     public static RewardChest getInstance() {
         return plugin;

@@ -32,6 +32,10 @@ public class DPRCFunction {
                 rewardChests.put(name, rewardChestConfig);
             }
         }
+        defaultOffset = new Location(null,
+                config.getDouble("Settings.defaultOffset.x", 0),
+                config.getDouble("Settings.defaultOffset.y", 0),
+                config.getDouble("Settings.defaultOffset.z", 0));
     }
 
     public static void saveConfig() {
@@ -412,7 +416,7 @@ public class DPRCFunction {
             return;
         }
         List<ItemStack> items = getRewardChestItems(name);
-        ItemDisplay as = showFakeItem(p, loc, items.isEmpty() ? new ItemStack(Material.PAPER) : items.get(new Random().nextInt(items.size())));
+        ItemDisplay as = showFakeItem(p, name, loc, items.isEmpty() ? new ItemStack(Material.PAPER) : items.get(new Random().nextInt(items.size())));
         ItemStack item = getReward(name);
         BukkitTask task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
             as.setItemStack(items.isEmpty() ? new ItemStack(Material.PAPER) : items.get(new Random().nextInt(items.size())));
@@ -452,8 +456,8 @@ public class DPRCFunction {
 
     private static final Map<UUID, ItemDisplay> fakeEntities = new HashMap<>();
 
-    public static ItemDisplay showFakeItem(Player player, Location location, ItemStack item) {
-        ItemDisplay stand = location.add(0.5, 3, 0.5).getWorld().spawn(location, ItemDisplay.class);
+    public static ItemDisplay showFakeItem(Player player, String name, Location location, ItemStack item) {
+        ItemDisplay stand = location.add(getOffset(location.getWorld(), name)).getWorld().spawn(location, ItemDisplay.class);
         stand.setItemStack(item);
         stand.setVisibleByDefault(false);
         player.showEntity(plugin, stand);
@@ -489,5 +493,52 @@ public class DPRCFunction {
             }
         }
         config.set("Settings.fake_items", null);
+    }
+
+    public static Location getOffset(World world, String name) {
+        if (!isExistRewardChest(name)) {
+            return defaultOffset;
+        }
+        YamlConfiguration data = rewardChests.get(name);
+        if (data.contains("Settings.offset")) {
+            Location loc = new Location(
+                    world,
+                    data.getDouble("Settings.offset.x"),
+                    data.getDouble("Settings.offset.y"),
+                    data.getDouble("Settings.offset.z")
+            );
+            if (loc.getWorld() != null && loc.getWorld().equals(world)) {
+                return loc;
+            } else {
+                return defaultOffset;
+            }
+        }
+        return defaultOffset;
+    }
+
+    public static void setOffset(CommandSender p, String name, String x, String y, String z) {
+        if (!isExistRewardChest(name)) {
+            p.sendMessage(prefix + lang.getWithArgs("reward_chest_not_exists", name));
+            return;
+        }
+        if (!(p instanceof Player)) {
+            p.sendMessage(prefix + lang.get("not_player"));
+            return;
+        }
+        Player player = (Player) p;
+        try {
+            double offsetX = Double.parseDouble(x);
+            double offsetY = Double.parseDouble(y);
+            double offsetZ = Double.parseDouble(z);
+            YamlConfiguration rewardChestConfig = rewardChests.get(name);
+            rewardChestConfig.set("Settings.offset.x", offsetX);
+            rewardChestConfig.set("Settings.offset.y", offsetY);
+            rewardChestConfig.set("Settings.offset.z", offsetZ);
+            rewardChests.put(name, rewardChestConfig);
+            saveConfig();
+            player.sendMessage(prefix + lang.getWithArgs("reward_chest_offset_set", name, x, y, z));
+        } catch (NumberFormatException e) {
+            player.sendMessage(prefix + lang.get("invalid_number_format"));
+        }
     }
 }

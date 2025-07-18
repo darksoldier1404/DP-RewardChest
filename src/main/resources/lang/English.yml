@@ -34,3 +34,6 @@ reward_chest_key_wait_failed: "&cFailed to wait for the reward chest key for &e{
 reward_chest_key_give_failed: "&cFailed to give the reward chest key for &e{0}&c."
 no_target_block: "&cNo target block found. Please look at a block within 10 blocks."
 block_not_solid: "&cThe selected block is not solid. Please select a solid block."
+help_offset: "/dprc offset <name> <x> <y> <z> : Set the offset for the reward chest item."
+invalid_number_format: "&cInvalid number format. Please enter a valid number."
+reward_chest_offset_set: "&aOffset for reward chest &e{0} &ahas been set to &e{1}, {2}, {3}&a."

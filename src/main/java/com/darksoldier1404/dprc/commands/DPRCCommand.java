@@ -65,8 +65,15 @@ public class DPRCCommand {
             else p.sendMessage(prefix + lang.get("help_block"));
         });
 
-        List<String> commands = Arrays.asList("create", "items", "weight", "delete", "key", "block", "givekey", "reload");
-        for (String c : commands) {
+        builder.addSubCommand("offset", "dprc.offset", lang.get("help_offset"), true, (p, args) -> {
+            if (args.length == 5) {
+                DPRCFunction.setOffset(p, args[1], args[2], args[3], args[4]);
+            } else {
+                p.sendMessage(prefix + lang.get("help_offset"));
+            }
+        });
+
+        for (String c : builder.getSubCommandNames()) {
             builder.addTabCompletion(c, args -> {
                 if (args.length == 2) return new ArrayList<>(rewardChests.keySet());
                 if (args.length == 3 && c.equalsIgnoreCase("givekey")) {
