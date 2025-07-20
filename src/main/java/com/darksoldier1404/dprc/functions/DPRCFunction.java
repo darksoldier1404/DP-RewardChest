@@ -510,9 +510,11 @@ public class DPRCFunction {
             if (loc.getWorld() != null && loc.getWorld().equals(world)) {
                 return loc;
             } else {
+                defaultOffset.setWorld(world);
                 return defaultOffset;
             }
         }
+        defaultOffset.setWorld(world);
         return defaultOffset;
     }
 
