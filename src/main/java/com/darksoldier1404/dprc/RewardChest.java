@@ -1,7 +1,9 @@
 package com.darksoldier1404.dprc;
 
 import com.darksoldier1404.dppc.api.inventory.DInventory;
-import com.darksoldier1404.dppc.lang.DLang;
+import com.darksoldier1404.dppc.data.DPlugin;
+import com.darksoldier1404.dppc.data.DataContainer;
+import com.darksoldier1404.dppc.data.DataType;
 import com.darksoldier1404.dppc.utils.PluginUtil;
 import com.darksoldier1404.dppc.utils.Tuple;
 import com.darksoldier1404.dprc.commands.DPRCCommand;
@@ -9,19 +11,21 @@ import com.darksoldier1404.dprc.events.DPRCEvent;
 import com.darksoldier1404.dprc.functions.DPRCFunction;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 
-public class RewardChest extends JavaPlugin {
+public class RewardChest extends DPlugin {
     public static RewardChest plugin;
-    public static YamlConfiguration config;
-    public static String prefix;
-    public static DLang lang;
-    public static Map<String, YamlConfiguration> rewardChests = new HashMap<>();
+    public static DataContainer<String, YamlConfiguration> rewardChests;
     public static Map<UUID, Tuple<DInventory, Integer>> currentChanceEdit = new HashMap<>();
     public static Set<UUID> currentlyRoll = new HashSet<>();
     public static Location defaultOffset;
+
+    public RewardChest() {
+        super(true);
+        plugin = this;
+        init();
+    }
 
     public static RewardChest getInstance() {
         return plugin;
@@ -29,8 +33,8 @@ public class RewardChest extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        plugin = this;
         PluginUtil.addPlugin(plugin, 26191);
+        rewardChests = loadDataContainer(new DataContainer<String, YamlConfiguration>(this, DataType.YAML, "data"), null);
     }
 
     @Override

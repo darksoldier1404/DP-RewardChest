@@ -16,61 +16,70 @@ public class DPRCCommand {
     private final CommandBuilder builder;
 
     public DPRCCommand() {
-        builder = new CommandBuilder(prefix);
+        builder = new CommandBuilder(plugin);
 
-        builder.addSubCommand("reload", "dprc.reload", lang.get("help_reload"), false, (p, args) -> {
+        builder.addSubCommand("reload", "dprc.reload", plugin.getLang().get("help_reload"), false, (p, args) -> {
             DPRCFunction.init();
-            p.sendMessage(prefix + lang.get("reload_success"));
+            p.sendMessage(plugin.getPrefix() + plugin.getLang().get("reload_success"));
+            return true;
         });
 
-        builder.addSubCommand("create", "dprc.create", lang.get("help_create"), true, (p, args) -> {
+        builder.addSubCommand("create", "dprc.create", plugin.getLang().get("help_create"), true, (p, args) -> {
             if (args.length == 2) DPRCFunction.createRewardChest(p, args[1]);
-            else p.sendMessage(prefix + lang.get("help_create"));
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_create"));
+            return true;
         });
 
-        builder.addSubCommand("items", "dprc.items", lang.get("help_items"), true, (p, args) -> {
+        builder.addSubCommand("items", "dprc.items", plugin.getLang().get("help_items"), true, (p, args) -> {
             if (args.length == 2) DPRCFunction.openRewardChestItems(p, args[1]);
-            else p.sendMessage(prefix + lang.get("help_items"));
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_items"));
+            return true;
         });
 
-        builder.addSubCommand("weight", "dprc.weight", lang.get("help_weight"), true, (p, args) -> {
+        builder.addSubCommand("weight", "dprc.weight", plugin.getLang().get("help_weight"), true, (p, args) -> {
             if (args.length == 2) DPRCFunction.openRewardChestChance(p, args[1]);
-            else p.sendMessage(prefix + lang.get("help_weight"));
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_weight"));
+            return true;
         });
 
-        builder.addSubCommand("delete", "dprc.delete", lang.get("help_delete"), false, (p, args) -> {
+        builder.addSubCommand("delete", "dprc.delete", plugin.getLang().get("help_delete"), false, (p, args) -> {
             if (args.length == 2) DPRCFunction.deleteRewardChest(p, args[1]);
-            else p.sendMessage(prefix + lang.get("help_delete"));
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_delete"));
+            return true;
         });
 
-        builder.addSubCommand("key", "dprc.key", lang.get("help_key"), true, (p, args) -> {
+        builder.addSubCommand("key", "dprc.key", plugin.getLang().get("help_key"), true, (p, args) -> {
             if (args.length == 2) DPRCFunction.openRewardChestKey(p, args[1]);
-            else p.sendMessage(prefix + lang.get("help_key"));
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_key"));
+            return true;
         });
 
-        builder.addSubCommand("givekey", "dprc.givekey", lang.get("help_givekey"), false, (p, args) -> {
+        builder.addSubCommand("givekey", "dprc.givekey", plugin.getLang().get("help_givekey"), false, (p, args) -> {
             if (args.length == 2) {
                 if (!(p instanceof Player)) {
-                    p.sendMessage(prefix + lang.get("not_player"));
-                    return;
+                    p.sendMessage(plugin.getPrefix() + plugin.getLang().get("not_player"));
+                    return true;
                 }
                 DPRCFunction.giveRewardChestKey((Player) p, args[1]);
             } else if (args.length == 3) {
                 DPRCFunction.giveRewardChestKey(Bukkit.getPlayer(args[2]), args[1]);
-            } else p.sendMessage(prefix + lang.get("help_givekey"));
+            } else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_givekey"));
+            return true;
         });
 
-        builder.addSubCommand("block", "dprc.block", lang.get("help_block"), true, (p, args) -> {
+        builder.addSubCommand("block", "dprc.block", plugin.getLang().get("help_block"), true, (p, args) -> {
             if (args.length == 2) DPRCFunction.setRewardChestBlock(p, args[1]);
-            else p.sendMessage(prefix + lang.get("help_block"));
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_block"));
+            return true;
         });
 
-        builder.addSubCommand("offset", "dprc.offset", lang.get("help_offset"), true, (p, args) -> {
+        builder.addSubCommand("offset", "dprc.offset", plugin.getLang().get("help_offset"), true, (p, args) -> {
             if (args.length == 5) {
                 DPRCFunction.setOffset(p, args[1], args[2], args[3], args[4]);
             } else {
-                p.sendMessage(prefix + lang.get("help_offset"));
+                p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_offset"));
             }
+            return true;
         });
 
         for (String c : builder.getSubCommandNames()) {

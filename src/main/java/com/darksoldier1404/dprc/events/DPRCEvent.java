@@ -60,7 +60,7 @@ public class DPRCEvent implements Listener {
                     String name = (String) inv.getObj();
                     currentChanceEdit.put(e.getWhoClicked().getUniqueId(), Tuple.of(inv, slot));
                     e.getWhoClicked().closeInventory();
-                    e.getWhoClicked().sendMessage(prefix + lang.getWithArgs("reward_chest_weight_edit", name));
+                    e.getWhoClicked().sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_edit", name));
                 }
             }
         }
@@ -76,7 +76,7 @@ public class DPRCEvent implements Listener {
             DInventory inv = data.getA();
             int slot = data.getB();
             if (!message.matches("\\d+")) {
-                p.sendMessage(prefix + lang.get("reward_chest_weight_format_error"));
+                p.sendMessage(plugin.getPrefix() + plugin.getLang().get("reward_chest_weight_format_error"));
                 return;
             }
             currentChanceEdit.remove(p.getUniqueId());
