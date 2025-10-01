@@ -19,6 +19,7 @@ public class DPRCCommand {
         builder = new CommandBuilder(plugin);
 
         builder.addSubCommand("reload", "dprc.reload", plugin.getLang().get("help_reload"), false, (p, args) -> {
+            plugin.init();
             DPRCFunction.init();
             p.sendMessage(plugin.getPrefix() + plugin.getLang().get("reload_success"));
             return true;
