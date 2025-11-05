@@ -1,7 +1,6 @@
 package com.darksoldier1404.dprc.functions;
 
 import com.darksoldier1404.dppc.api.inventory.DInventory;
-import com.darksoldier1404.dppc.lang.DLang;
 import com.darksoldier1404.dppc.utils.*;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -30,7 +29,7 @@ public class DPRCFunction {
     }
 
     public static void saveConfig() {
-        plugin.saveDataContainer();
+        plugin.saveAllData();
     }
 
     public static boolean isExistRewardChest(String name) {

@@ -1,8 +1,8 @@
 name: DP-RewardChest
-version: 2.0.1
+version: 2.1.0
 main: com.darksoldier1404.dprc.RewardChest
 authors: [ DEAD_POOLIO_ ]
-api-version: 1.19
+api-version: 1.20
 depend:
   - DPP-Core
 commands:

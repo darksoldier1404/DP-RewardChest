@@ -1,5 +1,6 @@
 package com.darksoldier1404.dprc;
 
+import com.darksoldier1404.dppc.annotation.DPPCoreVersion;
 import com.darksoldier1404.dppc.api.inventory.DInventory;
 import com.darksoldier1404.dppc.data.DPlugin;
 import com.darksoldier1404.dppc.data.DataContainer;
@@ -14,6 +15,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.util.*;
 
+@DPPCoreVersion(since = "5.3.0")
 public class RewardChest extends DPlugin {
     public static RewardChest plugin;
     public static DataContainer<String, YamlConfiguration> rewardChests;
@@ -34,7 +36,7 @@ public class RewardChest extends DPlugin {
     @Override
     public void onLoad() {
         PluginUtil.addPlugin(plugin, 26191);
-        rewardChests = loadDataContainer(new DataContainer<String, YamlConfiguration>(this, DataType.YAML, "data"), null);
+        rewardChests = loadDataContainer(new DataContainer<>(this, DataType.YAML, "data"), null);
     }
 
     @Override

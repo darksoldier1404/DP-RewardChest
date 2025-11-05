@@ -1,6 +1,8 @@
 package com.darksoldier1404.dprc.events;
 
 import com.darksoldier1404.dppc.api.inventory.DInventory;
+import com.darksoldier1404.dppc.events.dinventory.DInventoryClickEvent;
+import com.darksoldier1404.dppc.events.dinventory.DInventoryCloseEvent;
 import com.darksoldier1404.dppc.utils.NBT;
 import com.darksoldier1404.dppc.utils.Tuple;
 import com.darksoldier1404.dprc.functions.DPRCFunction;
@@ -19,49 +21,45 @@ import static com.darksoldier1404.dprc.RewardChest.*;
 
 public class DPRCEvent implements Listener {
     @EventHandler
-    public void onInventoryClose(InventoryCloseEvent e) {
-        if (e.getInventory().getHolder() instanceof DInventory) {
-            DInventory inv = (DInventory) e.getInventory().getHolder();
-            if (inv.isValidHandler(plugin)) {
-                if (inv.getChannel() == 1) { // item set
-                    DPRCFunction.saveRewardChestItems((String) inv.getObj(), inv);
-                    return;
-                }
-                if (inv.getChannel() == 3) { // key set
-                    DPRCFunction.saveRewardChestKey((Player) e.getPlayer(), inv);
-                }
+    public void onInventoryClose(DInventoryCloseEvent e) {
+        DInventory inv = e.getDInventory();
+        if (inv.isValidHandler(plugin)) {
+            if (inv.getChannel() == 1) { // item set
+                DPRCFunction.saveRewardChestItems((String) inv.getObj(), inv);
+                return;
+            }
+            if (inv.getChannel() == 3) { // key set
+                DPRCFunction.saveRewardChestKey((Player) e.getPlayer(), inv);
             }
         }
     }
 
     @EventHandler
-    public void onInventoryClick(InventoryClickEvent e) {
-        if (e.getInventory().getHolder() instanceof DInventory) {
-            DInventory inv = (DInventory) e.getInventory().getHolder();
-            if (inv.isValidHandler(plugin)) {
-                ItemStack currentItem = e.getCurrentItem();
-                if (currentItem == null || currentItem.getType().isAir()) {
-                    return;
-                }
-                if (NBT.hasTagKey(currentItem, "dprc_pane")) {
+    public void onInventoryClick(DInventoryClickEvent e) {
+        DInventory inv = e.getDInventory();
+        if (inv.isValidHandler(plugin)) {
+            ItemStack currentItem = e.getCurrentItem();
+            if (currentItem == null || currentItem.getType().isAir()) {
+                return;
+            }
+            if (NBT.hasTagKey(currentItem, "dprc_pane")) {
+                e.setCancelled(true);
+                return;
+            }
+            if (inv.getChannel() == 2) { // weight set
+                if (e.getClickedInventory().getType() == InventoryType.PLAYER) {
                     e.setCancelled(true);
                     return;
                 }
-                if (inv.getChannel() == 2) { // weight set
-                    if (e.getClickedInventory().getType() == InventoryType.PLAYER) {
-                        e.setCancelled(true);
-                        return;
-                    }
-                    if (e.getCurrentItem() == null && e.getCurrentItem().getType().isAir()) {
-                        e.setCancelled(true);
-                        return;
-                    }
-                    int slot = e.getSlot();
-                    String name = (String) inv.getObj();
-                    currentChanceEdit.put(e.getWhoClicked().getUniqueId(), Tuple.of(inv, slot));
-                    e.getWhoClicked().closeInventory();
-                    e.getWhoClicked().sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_edit", name));
+                if (e.getCurrentItem() == null && e.getCurrentItem().getType().isAir()) {
+                    e.setCancelled(true);
+                    return;
                 }
+                int slot = e.getSlot();
+                String name = (String) inv.getObj();
+                currentChanceEdit.put(e.getWhoClicked().getUniqueId(), Tuple.of(inv, slot));
+                e.getWhoClicked().closeInventory();
+                e.getWhoClicked().sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_edit", name));
             }
         }
     }
