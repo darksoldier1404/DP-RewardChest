@@ -2,10 +2,12 @@ package com.darksoldier1404.dprc.functions;
 
 import com.darksoldier1404.dppc.api.inventory.DInventory;
 import com.darksoldier1404.dppc.utils.*;
+import com.darksoldier1404.dprc.enums.RandomType;
+import com.darksoldier1404.dprc.obj.Chest;
+import com.darksoldier1404.dprc.obj.ChestWeight;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -14,12 +16,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.darksoldier1404.dprc.RewardChest.*;
 
+@SuppressWarnings("DataFlowIssue")
 public class DPRCFunction {
     public static void init() {
         defaultOffset = new Location(null,
@@ -28,12 +32,8 @@ public class DPRCFunction {
                 plugin.getConfig().getDouble("Settings.defaultOffset.z", 0));
     }
 
-    public static void saveConfig() {
-        plugin.saveAllData();
-    }
-
     public static boolean isExistRewardChest(String name) {
-        return rewardChests.containsKey(name);
+        return data.containsKey(name);
     }
 
     public static void createRewardChest(CommandSender sender, String name) {
@@ -41,10 +41,9 @@ public class DPRCFunction {
             sender.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_exists", name));
             return;
         }
-        YamlConfiguration rewardChestConfig = new YamlConfiguration();
-        rewardChestConfig.set("Settings.name", name);
-        rewardChests.put(name, rewardChestConfig);
-        saveConfig();
+        Chest chest = new Chest(name, RandomType.SIMPLE, null, null, new DInventory(name, 54, plugin), null);
+        data.put(name, chest);
+        data.save(name);
         sender.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_created", name));
     }
 
@@ -57,13 +56,8 @@ public class DPRCFunction {
             sender.sendMessage(plugin.getPrefix() + plugin.getLang().get("not_player"));
             return;
         }
-        DInventory inv = new DInventory(plugin.getLang().getWithArgs("reward_chest_items_title", name), 54, plugin);
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        if (rewardChestConfig.getConfigurationSection("Items") != null) {
-            for (String itemKey : rewardChestConfig.getConfigurationSection("Items").getKeys(false)) {
-                inv.setItem(Integer.parseInt(itemKey), rewardChestConfig.getItemStack("Items." + itemKey + ".item"));
-            }
-        }
+        Chest chest = data.get(name);
+        DInventory inv = chest.getInventory();
         inv.setChannel(1);
         inv.setObj(name);
         inv.openInventory((Player) sender);
@@ -73,12 +67,10 @@ public class DPRCFunction {
         if (!isExistRewardChest(name)) {
             return;
         }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        for (int i = 0; i < inv.getSize(); i++) {
-            rewardChestConfig.set("Items." + i + ".item", inv.getItem(i));
-        }
-        rewardChests.put(name, rewardChestConfig);
-        saveConfig();
+        Chest chest = data.get(name);
+        chest.setInventory(inv);
+        data.put(name, chest);
+        data.save(name);
     }
 
     public static void deleteRewardChest(CommandSender sender, String name) {
@@ -86,8 +78,8 @@ public class DPRCFunction {
             sender.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_not_exists", name));
             return;
         }
-        rewardChests.remove(name);
-        new File(plugin.getDataFolder(), "data/" + name + ".yml").delete();
+        data.delete(name);
+        data.remove(name);
         sender.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_deleted", name));
     }
 
@@ -100,77 +92,62 @@ public class DPRCFunction {
             sender.sendMessage(plugin.getPrefix() + plugin.getLang().get("not_player"));
             return;
         }
-        DInventory inv = new DInventory(plugin.getLang().getWithArgs("reward_chest_weight_title", name), 54, plugin);
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        if (rewardChestConfig.getConfigurationSection("Items") != null) {
-            for (String itemKey : rewardChestConfig.getConfigurationSection("Items").getKeys(false)) {
-                ItemStack item = rewardChestConfig.getItemStack("Items." + itemKey + ".item");
-                if (item != null) {
-                    inv.setItem(Integer.parseInt(itemKey), item.clone());
-                }
-            }
-        }
+        Chest chest = data.get(name);
+        DInventory inv = chest.getInventory().clone();
+        updateChanceLore(inv);
         inv.setChannel(2);
-        inv.setObj(name);
+        inv.setObj(chest);
         inv.openInventory((Player) sender);
     }
 
-    public static void setRewardChestWeight(Player p, DInventory inv, int index, int weight) {
+    public static void setRewardChestWeight(Player p, DInventory inv, int slot, int weight) {
         String name = (String) inv.getObj();
         if (!isExistRewardChest(name)) {
             return;
         }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        rewardChestConfig.set("Items." + index + ".weight", weight);
-        rewardChests.put(name, rewardChestConfig);
-        saveConfig();
-        updateChanceLore(inv, name);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            inv.openInventory(p);
-            p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_set", String.valueOf(weight), String.valueOf(index)));
-        }, 1L);
+        Chest chest = data.get(name);
+        ChestWeight cw = chest.findchestWeight(inv.getCurrentPage(), slot);
+        chest.getWeightList().remove(cw);
+        if (weight == 0) {
+            plugin.data.put(chest.getName(), chest);
+            plugin.data.save(chest.getName());
+            p.sendMessage(plugin.getPrefix() + "weight removed");
+        } else {
+            cw.setWeight(weight);
+            chest.getWeightList().add(cw);
+            plugin.data.put(chest.getName(), chest);
+            plugin.data.save(chest.getName());
+            p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_set", String.valueOf(weight), String.valueOf(slot)));
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> inv.openInventory(p), 1L);
     }
 
-    public static void updateChanceLore(DInventory inv, String name) { // need to update after setting weight
-        if (!isExistRewardChest(name)) {
-            return;
-        }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        Map<String, Integer> itemWeights = new HashMap<>();
-        Map<String, Double> itemChances = new HashMap<>();
-        if (rewardChestConfig.getConfigurationSection("Items") != null) {
-            for (String itemKey : rewardChestConfig.getConfigurationSection("Items").getKeys(false)) {
-                int weight = rewardChestConfig.getInt("Items." + itemKey + ".weight", 0);
-                itemWeights.put(itemKey, weight);
+    public static void updateChanceLore(DInventory inv) {
+        Chest box = (Chest) inv.getObj();
+        if (box == null) return;
+        inv.applyAllItemChanges((pis -> {
+            ItemStack item = pis.getItem();
+            if (item == null || item.getType().isAir()) {
+                return pis;
             }
-        }
-        int totalWeight = itemWeights.values().stream().mapToInt(Integer::intValue).sum();
-        if (totalWeight == 0) {
-            for (String itemKey : itemWeights.keySet()) {
-                itemChances.put(itemKey, 1.0 / itemWeights.size());
+            int totalWeight = 0;
+            for (DInventory.PageItemSet pageItemSet : inv.getAllPageItemSets()) {
+                totalWeight += box.findWeight(pageItemSet.getPage(), pageItemSet.getSlot());
             }
-        } else {
-            for (Map.Entry<String, Integer> entry : itemWeights.entrySet()) {
-                double chance = (double) entry.getValue() / totalWeight;
-                itemChances.put(entry.getKey(), chance);
+            int weight = box.findWeight(pis.getPage(), pis.getSlot());
+            List<String> lore = item.getItemMeta() != null && item.getItemMeta().getLore() != null ? item.getItemMeta().getLore() : new ArrayList<>();
+            if (weight > 0) {
+                lore.add("§7Weight: §e" + weight);
+                double chance = (double) weight / (double) totalWeight * 100.0;
+                lore.add("§7Chance: §e" + String.format("%.2f", chance) + "%");
             }
-        }
-        for (int i = 0; i < inv.getSize(); i++) {
-            if (inv.getItem(i) != null && rewardChestConfig.contains("Items." + i)) {
-                ItemStack item = inv.getItem(i);
-                ItemMeta im = item.getItemMeta();
-                if (im != null) {
-                    im.setLore(
-                            Arrays.asList(
-                                    plugin.getLang().getWithArgs("reward_chest_item_lore_weight", String.valueOf(itemWeights.get(String.valueOf(i)))),
-                                    plugin.getLang().getWithArgs("reward_chest_item_lore_chance", String.format("%.2f%%", itemChances.getOrDefault(String.valueOf(i), 0.0) * 100))
-                            )
-                    );
-                    item.setItemMeta(im);
-                    inv.setItem(i, item);
-                }
-            }
-        }
+            ItemMeta meta = item.getItemMeta();
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            pis.setItem(item);
+            return pis;
+        }));
+        inv.update();
     }
 
     public static void openRewardChestKey(CommandSender sender, String name) {
@@ -182,8 +159,8 @@ public class DPRCFunction {
             sender.sendMessage(plugin.getPrefix() + plugin.getLang().get("not_player"));
             return;
         }
-        DInventory inv = new DInventory(plugin.getLang().getWithArgs("reward_chest_key_title", name), 27, plugin);
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
+        Chest chest = data.get(name);
+        DInventory inv = new DInventory("Reward Chest Key Edit - " + chest.getName(), 27, plugin);
         ItemStack pane = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta paneMeta = pane.getItemMeta();
         if (paneMeta != null) {
@@ -194,12 +171,7 @@ public class DPRCFunction {
         for (int i = 0; i < inv.getSize(); i++) {
             inv.setItem(i, NBT.setStringTag(pane, "dprc_pane", "true"));
         }
-        if (rewardChestConfig.getConfigurationSection("Key") != null) {
-            ItemStack keyItem = rewardChestConfig.getItemStack("Key.item");
-            inv.setItem(13, keyItem);
-        } else {
-            inv.setItem(13, null);
-        }
+        inv.setItem(13, chest.getKeyItem());
         inv.setChannel(3);
         inv.setObj(name);
         inv.openInventory((Player) sender);
@@ -211,22 +183,25 @@ public class DPRCFunction {
             return;
         }
         ItemStack keyItem = inv.getItem(13);
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        rewardChestConfig.set("Key.item", keyItem);
-        rewardChests.put(name, rewardChestConfig);
-        saveConfig();
+        Chest chest = data.get(name);
+        chest.setKeyItem(keyItem);
+        data.put(name, chest);
+        data.save(name);
         p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_set", name));
     }
 
+    @Nullable
     public static ItemStack getRewardChestKey(String name) {
         if (!isExistRewardChest(name)) {
             return null;
         }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        if (rewardChestConfig.contains("Key.item")) {
-            return NBT.setStringTag(rewardChestConfig.getItemStack("Key.item"), "dprc_key", name);
+        Chest chest = data.get(name);
+        ItemStack keyItem = chest.getKeyItem();
+        if (keyItem == null) {
+            return null;
+        } else {
+            return NBT.setStringTag(keyItem, "dprc_key", name);
         }
-        return null;
     }
 
     public static void giveRewardChestKey(Player player, String name) {
@@ -263,40 +238,19 @@ public class DPRCFunction {
             p.sendMessage(plugin.getPrefix() + plugin.getLang().get("block_not_solid"));
             return;
         }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        if (rewardChestConfig.contains("Settings.block.world") &&
-                rewardChestConfig.getString("Settings.block.world").equals(world.getName()) &&
-                rewardChestConfig.getInt("Settings.block.x") == b.getX() &&
-                rewardChestConfig.getInt("Settings.block.y") == b.getY() &&
-                rewardChestConfig.getInt("Settings.block.z") == b.getZ()) {
-            rewardChestConfig.set("Settings.block", null);
-            p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_block_removed", name));
-        } else {
-            rewardChestConfig.set("Settings.block.world", world.getName());
-            rewardChestConfig.set("Settings.block.x", b.getX());
-            rewardChestConfig.set("Settings.block.y", b.getY());
-            rewardChestConfig.set("Settings.block.z", b.getZ());
-            p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_block_set", name, world.getName(), b.getX() + ", " + b.getY() + ", " + b.getZ() + " (" + b.getType().name() + ")"));
-        }
-        rewardChests.put(name, rewardChestConfig);
-        saveConfig();
+        Chest chest = data.get(name);
+        chest.setLocation(b.getLocation());
+        data.put(name, chest);
+        data.save(name);
+        p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_block_set", name, world.getName(), b.getX() + ", " + b.getY() + ", " + b.getZ() + " (" + b.getType().name() + ")"));
     }
 
     public static Tuple<Boolean, String> isRewardChestBlock(Block block) {
-        for (Map.Entry<String, YamlConfiguration> entry : rewardChests.entrySet()) {
-            YamlConfiguration rewardChestConfig = entry.getValue();
-            if (rewardChestConfig.contains("Settings.block")) {
-                String worldName = block.getWorld().getName();
-                World world = Bukkit.getWorld(worldName);
-                if (world == null || !world.equals(block.getWorld())) {
-                    continue;
-                }
-                int x = rewardChestConfig.getInt("Settings.block.x");
-                int y = rewardChestConfig.getInt("Settings.block.y");
-                int z = rewardChestConfig.getInt("Settings.block.z");
-                if (block.getX() == x && block.getY() == y && block.getZ() == z) {
-                    return Tuple.of(true, entry.getKey());
-                }
+        for (Map.Entry<String, Chest> entry : data.entrySet()) {
+            Chest chest = entry.getValue();
+            if (chest.getLocation() == null) continue;
+            if (chest.getLocation().equals(block.getLocation())) {
+                return Tuple.of(true, entry.getKey());
             }
         }
         return Tuple.of(false, null);
@@ -306,67 +260,47 @@ public class DPRCFunction {
         if (!isExistRewardChest(name)) {
             return Collections.emptyList();
         }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        List<ItemStack> items = new ArrayList<>();
-        if (rewardChestConfig.getConfigurationSection("Items") != null) {
-            for (String itemKey : rewardChestConfig.getConfigurationSection("Items").getKeys(false)) {
-                ItemStack item = rewardChestConfig.getItemStack("Items." + itemKey + ".item");
-                if (item != null) {
-                    items.add(item);
-                }
-            }
-        }
-        return items;
+        Chest chest = data.get(name);
+        DInventory inv = chest.getInventory();
+        return inv.getAllPageItems();
     }
 
+    @Nullable
     public static Location getRewardChestLocation(String name) {
         if (!isExistRewardChest(name)) {
             return null;
         }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        if (rewardChestConfig.contains("Settings.block")) {
-            String worldName = rewardChestConfig.getString("Settings.block.world");
-            World world = Bukkit.getWorld(worldName);
-            if (world != null) {
-                int x = rewardChestConfig.getInt("Settings.block.x");
-                int y = rewardChestConfig.getInt("Settings.block.y");
-                int z = rewardChestConfig.getInt("Settings.block.z");
-                return new Location(world, x, y, z);
-            }
-        }
-        return null;
+        Chest chest = data.get(name);
+        return chest.getLocation();
     }
 
+    @Nullable
     public static ItemStack getReward(String name) {
-        if (!isExistRewardChest(name)) {
-            return null;
-        }
-        YamlConfiguration rewardChestConfig = rewardChests.get(name);
-        if (rewardChestConfig.getConfigurationSection("Items") == null) {
-            return null;
-        }
-        List<String> itemKeys = new ArrayList<>(rewardChestConfig.getConfigurationSection("Items").getKeys(false));
-        List<ItemStack> items = new ArrayList<>();
-        List<Integer> weights = new ArrayList<>();
-        int totalWeight = 0;
-        for (String key : itemKeys) {
-            ItemStack item = rewardChestConfig.getItemStack("Items." + key + ".item");
-            int weight = rewardChestConfig.getInt("Items." + key + ".weight", 0);
-            if (item != null && weight > 0) {
-                items.add(item);
+        Chest chest = data.get(name);
+        DInventory inv = chest.getInventory().clone();
+        if (chest.getRandomType() == RandomType.SIMPLE) {
+            List<ItemStack> items = inv.getAllPageItems().stream().filter(item -> item != null && item.getType() != Material.AIR).collect(Collectors.toList());
+            if (items.isEmpty()) {
+                return null;
+            }
+            int randomIndex = (int) (Math.random() * items.size());
+            return items.get(randomIndex).clone();
+        } else {
+            List<DInventory.PageItemSet> allItems = inv.getAllPageItemSets();
+            List<Integer> weights = new ArrayList<>();
+            int totalWeight = 0;
+            for (DInventory.PageItemSet pis : allItems) {
+                int weight = chest.findWeight(pis.getPage(), pis.getSlot());
                 weights.add(weight);
                 totalWeight += weight;
             }
-        }
-        if (items.isEmpty() || totalWeight == 0) {
-            return null;
-        }
-        int rand = new Random().nextInt(totalWeight);
-        int sum = 0;
-        for (int i = 0; i < items.size(); i++) {
-            sum += weights.get(i);
-            if (rand < sum) {
-                return items.get(i).clone();
+            int rand = new Random().nextInt(totalWeight);
+            int sum = 0;
+            for (int i = 0; i < allItems.size(); i++) {
+                sum += weights.get(i);
+                if (rand < sum) {
+                    return allItems.get(i).getItem().clone();
+                }
             }
         }
         return null;
@@ -486,23 +420,16 @@ public class DPRCFunction {
         if (!isExistRewardChest(name)) {
             return defaultOffset;
         }
-        YamlConfiguration data = rewardChests.get(name);
-        if (data.contains("Settings.offset")) {
-            Location loc = new Location(
-                    world,
-                    data.getDouble("Settings.offset.x"),
-                    data.getDouble("Settings.offset.y"),
-                    data.getDouble("Settings.offset.z")
-            );
-            if (loc.getWorld() != null && loc.getWorld().equals(world)) {
-                return loc;
-            } else {
-                defaultOffset.setWorld(world);
-                return defaultOffset;
-            }
+        Chest chest = data.get(name);
+        Location offset = chest.getOffset();
+        if (offset != null) {
+            offset.setWorld(world);
+            return offset;
+        } else {
+            offset = defaultOffset.clone();
+            offset.setWorld(world);
+            return offset;
         }
-        defaultOffset.setWorld(world);
-        return defaultOffset;
     }
 
     public static void setOffset(CommandSender p, String name, String x, String y, String z) {
@@ -519,15 +446,34 @@ public class DPRCFunction {
             double offsetX = Double.parseDouble(x);
             double offsetY = Double.parseDouble(y);
             double offsetZ = Double.parseDouble(z);
-            YamlConfiguration rewardChestConfig = rewardChests.get(name);
-            rewardChestConfig.set("Settings.offset.x", offsetX);
-            rewardChestConfig.set("Settings.offset.y", offsetY);
-            rewardChestConfig.set("Settings.offset.z", offsetZ);
-            rewardChests.put(name, rewardChestConfig);
-            saveConfig();
+            Chest chest = data.get(name);
+            Location offset = new Location(player.getWorld(), offsetX, offsetY, offsetZ);
+            chest.setOffset(offset);
+            data.put(name, chest);
+            data.save(name);
             player.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_offset_set", name, x, y, z));
         } catch (NumberFormatException e) {
             player.sendMessage(plugin.getPrefix() + plugin.getLang().get("invalid_number_format"));
         }
+    }
+
+    public static void setRewardChestRandomType(CommandSender p, String name, String sRandomType) {
+        if (!isExistRewardChest(name)) {
+            p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_not_exists", name));
+            return;
+        }
+        RandomType randomType;
+        try {
+            randomType = RandomType.valueOf(sRandomType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("invalid_random_type", Arrays.toString(RandomType.values())));
+            return;
+        }
+        Chest chest = data.get(name);
+        chest.setRandomType(randomType);
+        data.put(name, chest);
+        data.save(name);
+        p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_random_type_set", name, randomType.name()));
+
     }
 }

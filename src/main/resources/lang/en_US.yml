@@ -37,3 +37,6 @@ block_not_solid: "&cThe selected block is not solid. Please select a solid block
 help_offset: "/dprc offset <name> <x> <y> <z> : Set the offset for the reward chest item."
 invalid_number_format: "&cInvalid number format. Please enter a valid number."
 reward_chest_offset_set: "&aOffset for reward chest &e{0} &ahas been set to &e{1}, {2}, {3}&a."
+invalid_random_type: "&cInvalid random type. Available types are: &e{0}&c."
+reward_chest_random_type_set: "&aRandom type for reward chest &e{0} &ahas been set to &e{1}&a."
+help_randomtype: "/dprc randomtype <name> <type> : Set the random type for the reward chest."

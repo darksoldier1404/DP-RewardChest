@@ -6,8 +6,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.darksoldier1404.dprc.RewardChest.*;
@@ -34,6 +32,12 @@ public class DPRCCommand {
         builder.addSubCommand("items", "dprc.items", plugin.getLang().get("help_items"), true, (p, args) -> {
             if (args.length == 2) DPRCFunction.openRewardChestItems(p, args[1]);
             else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_items"));
+            return true;
+        });
+
+        builder.addSubCommand("randomType", "dprc.randomtype", plugin.getLang().get("help_randomtype"), true, (p, args) -> {
+            if (args.length == 3) DPRCFunction.setRewardChestRandomType(p, args[1], args[2]);
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_randomtype"));
             return true;
         });
 
@@ -85,7 +89,7 @@ public class DPRCCommand {
 
         for (String c : builder.getSubCommandNames()) {
             builder.addTabCompletion(c, args -> {
-                if (args.length == 2) return new ArrayList<>(rewardChests.keySet());
+                if (args.length == 2) return new ArrayList<>(data.keySet());
                 if (args.length == 3 && c.equalsIgnoreCase("givekey")) {
                     return Bukkit.getOnlinePlayers().stream()
                             .map(Player::getName)

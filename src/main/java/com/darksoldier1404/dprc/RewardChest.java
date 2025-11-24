@@ -10,15 +10,16 @@ import com.darksoldier1404.dppc.utils.Tuple;
 import com.darksoldier1404.dprc.commands.DPRCCommand;
 import com.darksoldier1404.dprc.events.DPRCEvent;
 import com.darksoldier1404.dprc.functions.DPRCFunction;
+import com.darksoldier1404.dprc.obj.Chest;
 import org.bukkit.Location;
-import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.util.*;
+
 
 @DPPCoreVersion(since = "5.3.0")
 public class RewardChest extends DPlugin {
     public static RewardChest plugin;
-    public static DataContainer<String, YamlConfiguration> rewardChests;
+    public static DataContainer<String, Chest> data;
     public static Map<UUID, Tuple<DInventory, Integer>> currentChanceEdit = new HashMap<>();
     public static Set<UUID> currentlyRoll = new HashSet<>();
     public static Location defaultOffset;
@@ -36,7 +37,7 @@ public class RewardChest extends DPlugin {
     @Override
     public void onLoad() {
         PluginUtil.addPlugin(plugin, 26191);
-        rewardChests = loadDataContainer(new DataContainer<>(this, DataType.YAML, "data"), null);
+        data = loadDataContainer(new DataContainer<>(this, DataType.CUSTOM, "data"), Chest.class);
     }
 
     @Override
@@ -49,7 +50,7 @@ public class RewardChest extends DPlugin {
 
     @Override
     public void onDisable() {
-        DPRCFunction.saveConfig();
+        saveAllData();
         DPRCFunction.cleanupFakeItems();
     }
 }

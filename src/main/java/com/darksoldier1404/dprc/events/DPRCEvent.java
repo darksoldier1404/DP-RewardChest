@@ -6,11 +6,10 @@ import com.darksoldier1404.dppc.events.dinventory.DInventoryCloseEvent;
 import com.darksoldier1404.dppc.utils.NBT;
 import com.darksoldier1404.dppc.utils.Tuple;
 import com.darksoldier1404.dprc.functions.DPRCFunction;
+import com.darksoldier1404.dprc.obj.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -56,10 +55,10 @@ public class DPRCEvent implements Listener {
                     return;
                 }
                 int slot = e.getSlot();
-                String name = (String) inv.getObj();
+                Chest chest = (Chest) inv.getObj();
                 currentChanceEdit.put(e.getWhoClicked().getUniqueId(), Tuple.of(inv, slot));
                 e.getWhoClicked().closeInventory();
-                e.getWhoClicked().sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_edit", name));
+                e.getWhoClicked().sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_edit", chest.getName()));
             }
         }
     }
