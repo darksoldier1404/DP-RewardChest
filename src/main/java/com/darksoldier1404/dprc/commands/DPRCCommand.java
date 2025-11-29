@@ -1,11 +1,13 @@
 package com.darksoldier1404.dprc.commands;
 
 import com.darksoldier1404.dppc.builder.command.CommandBuilder;
+import com.darksoldier1404.dprc.enums.RandomType;
 import com.darksoldier1404.dprc.functions.DPRCFunction;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import static com.darksoldier1404.dprc.RewardChest.*;
@@ -44,6 +46,12 @@ public class DPRCCommand {
         builder.addSubCommand("weight", "dprc.weight", plugin.getLang().get("help_weight"), true, (p, args) -> {
             if (args.length == 2) DPRCFunction.openRewardChestChance(p, args[1]);
             else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_weight"));
+            return true;
+        });
+
+        builder.addSubCommand("maxpage", "dprc.maxpage", plugin.getLang().get("help_maxpage"), true, (p, args) -> {
+            if (args.length == 3) DPRCFunction.setRewardChestMaxPage(p, args[1], args[2]);
+            else p.sendMessage(plugin.getPrefix() + plugin.getLang().get("help_maxpage"));
             return true;
         });
 
@@ -90,6 +98,9 @@ public class DPRCCommand {
         for (String c : builder.getSubCommandNames()) {
             builder.addTabCompletion(c, args -> {
                 if (args.length == 2) return new ArrayList<>(data.keySet());
+                if(c.equalsIgnoreCase("randomtype") && args.length == 3) {
+                    return Arrays.stream(RandomType.values()).map(Enum::name).collect(Collectors.toList());
+                }
                 if (args.length == 3 && c.equalsIgnoreCase("givekey")) {
                     return Bukkit.getOnlinePlayers().stream()
                             .map(Player::getName)

@@ -41,7 +41,7 @@ public class DPRCFunction {
             sender.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_exists", name));
             return;
         }
-        Chest chest = new Chest(name, RandomType.SIMPLE, null, null, new DInventory(name, 54, plugin), null);
+        Chest chest = new Chest(name, RandomType.SIMPLE, null, null, new DInventory(name, 54, true, true, plugin), null);
         data.put(name, chest);
         data.save(name);
         sender.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_created", name));
@@ -59,7 +59,7 @@ public class DPRCFunction {
         Chest chest = data.get(name);
         DInventory inv = chest.getInventory();
         inv.setChannel(1);
-        inv.setObj(name);
+        inv.setObj(chest);
         inv.openInventory((Player) sender);
     }
 
@@ -68,6 +68,7 @@ public class DPRCFunction {
             return;
         }
         Chest chest = data.get(name);
+        inv.applyChanges();
         chest.setInventory(inv);
         data.put(name, chest);
         data.save(name);
@@ -94,18 +95,17 @@ public class DPRCFunction {
         }
         Chest chest = data.get(name);
         DInventory inv = chest.getInventory().clone();
-        updateChanceLore(inv);
         inv.setChannel(2);
         inv.setObj(chest);
         inv.openInventory((Player) sender);
     }
 
     public static void setRewardChestWeight(Player p, DInventory inv, int slot, int weight) {
-        String name = (String) inv.getObj();
+        Chest chest = (Chest) inv.getObj();
+        String name = chest.getName();
         if (!isExistRewardChest(name)) {
             return;
         }
-        Chest chest = data.get(name);
         ChestWeight cw = chest.findchestWeight(inv.getCurrentPage(), slot);
         chest.getWeightList().remove(cw);
         if (weight == 0) {
@@ -119,7 +119,11 @@ public class DPRCFunction {
             plugin.data.save(chest.getName());
             p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_weight_set", String.valueOf(weight), String.valueOf(slot)));
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> inv.openInventory(p), 1L);
+        inv = chest.getInventory().clone();
+        inv.setChannel(2);
+        inv.setObj(chest);
+        DInventory finalInv = inv;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> finalInv.openInventory(p), 1L);
     }
 
     public static void updateChanceLore(DInventory inv) {
@@ -173,17 +177,17 @@ public class DPRCFunction {
         }
         inv.setItem(13, chest.getKeyItem());
         inv.setChannel(3);
-        inv.setObj(name);
+        inv.setObj(chest);
         inv.openInventory((Player) sender);
     }
 
     public static void saveRewardChestKey(Player p, DInventory inv) {
-        String name = (String) inv.getObj();
+        Chest chest = (Chest) inv.getObj();
+        String name = chest.getName();
         if (!isExistRewardChest(name)) {
             return;
         }
         ItemStack keyItem = inv.getItem(13);
-        Chest chest = data.get(name);
         chest.setKeyItem(keyItem);
         data.put(name, chest);
         data.save(name);
@@ -271,7 +275,7 @@ public class DPRCFunction {
             return null;
         }
         Chest chest = data.get(name);
-        return chest.getLocation();
+        return chest.getLocation().clone();
     }
 
     @Nullable
@@ -339,17 +343,28 @@ public class DPRCFunction {
         List<ItemStack> items = getRewardChestItems(name);
         ItemDisplay as = showFakeItem(p, name, loc, items.isEmpty() ? new ItemStack(Material.PAPER) : items.get(new Random().nextInt(items.size())));
         ItemStack item = getReward(name);
-        BukkitTask task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             as.setItemStack(items.isEmpty() ? new ItemStack(Material.PAPER) : items.get(new Random().nextInt(items.size())));
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0F, 2.0F);
         }, 0L, 2L);
-        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+        BukkitTask task2 = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!as.isDead()) {
+                removeFakeItem(p);
+                currentlyRoll.remove(p.getUniqueId());
+            } else {
+                p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_give_failed", name));
+            }
+        }, 80L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!as.isDead()) {
                 p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_give", name));
                 task.cancel();
                 as.setItemStack(item);
                 if (!InventoryUtils.hasEnoughSpace(p.getInventory().getStorageContents(), item)) {
                     p.sendMessage(plugin.getPrefix() + plugin.getLang().get("inventory_full"));
+                    currentlyRoll.remove(p.getUniqueId());
+                    task2.cancel();
+                    removeFakeItem(p);
                     return;
                 }
                 for (ItemStack i : p.getInventory().getContents()) {
@@ -358,21 +373,19 @@ public class DPRCFunction {
                         i.setAmount(i.getAmount() - 1);
                         p.getInventory().addItem(item);
                         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0F, 1F);
+                        currentlyRoll.remove(p.getUniqueId());
+                        task2.cancel();
+                        removeFakeItem(p);
                         return;
                     }
                 }
             } else {
                 p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_wait_failed", name));
+                currentlyRoll.remove(p.getUniqueId());
+                task2.cancel();
+                removeFakeItem(p);
             }
         }, 60L);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!as.isDead()) {
-                removeFakeItem(p);
-                currentlyRoll.remove(p.getUniqueId());
-            } else {
-                p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_give_failed", name));
-            }
-        }, 80L);
     }
 
     private static final Map<UUID, ItemDisplay> fakeEntities = new HashMap<>();
@@ -475,5 +488,30 @@ public class DPRCFunction {
         data.save(name);
         p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_random_type_set", name, randomType.name()));
 
+    }
+
+    public static void setRewardChestMaxPage(CommandSender p, String name, String sMaxPage) {
+        if (!isExistRewardChest(name)) {
+            p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_not_exists", name));
+            return;
+        }
+        int maxPage;
+        try {
+            maxPage = Integer.parseInt(sMaxPage);
+            if (maxPage < 1) {
+                p.sendMessage(plugin.getPrefix() + plugin.getLang().get("invalid_max_page"));
+                return;
+            }
+        } catch (NumberFormatException e) {
+            p.sendMessage(plugin.getPrefix() + plugin.getLang().get("invalid_number_format"));
+            return;
+        }
+        Chest chest = data.get(name);
+        DInventory inv = chest.getInventory();
+        inv.setPages(maxPage);
+        chest.setInventory(inv);
+        data.put(name, chest);
+        data.save(name);
+        p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_max_page_set", name, String.valueOf(maxPage)));
     }
 }

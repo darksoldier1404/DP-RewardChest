@@ -3,6 +3,7 @@ package com.darksoldier1404.dprc.events;
 import com.darksoldier1404.dppc.api.inventory.DInventory;
 import com.darksoldier1404.dppc.events.dinventory.DInventoryClickEvent;
 import com.darksoldier1404.dppc.events.dinventory.DInventoryCloseEvent;
+import com.darksoldier1404.dppc.events.dinventory.DInventoryOpenEvent;
 import com.darksoldier1404.dppc.utils.NBT;
 import com.darksoldier1404.dppc.utils.Tuple;
 import com.darksoldier1404.dprc.functions.DPRCFunction;
@@ -24,11 +25,22 @@ public class DPRCEvent implements Listener {
         DInventory inv = e.getDInventory();
         if (inv.isValidHandler(plugin)) {
             if (inv.getChannel() == 1) { // item set
-                DPRCFunction.saveRewardChestItems((String) inv.getObj(), inv);
+                Chest chest = (Chest) inv.getObj();
+                DPRCFunction.saveRewardChestItems(chest.getName(), inv);
                 return;
             }
             if (inv.getChannel() == 3) { // key set
                 DPRCFunction.saveRewardChestKey((Player) e.getPlayer(), inv);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryOpen(DInventoryOpenEvent e) {
+        DInventory inv = e.getDInventory();
+        if (inv.isValidHandler(plugin)) {
+            if (inv.getChannel() == 2) { // item set
+                DPRCFunction.updateChanceLore(inv);
             }
         }
     }

@@ -30,6 +30,7 @@ public class Chest implements DataCargo {
         this.location = location;
         this.offset = offset;
         this.inventory = inventory;
+        this.inventory.applyDefaultPageTools();
         this.keyItem = keyItem;
     }
 

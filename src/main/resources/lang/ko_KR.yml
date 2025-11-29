@@ -40,3 +40,5 @@ reward_chest_offset_set: "&a보상 상자 &e{0} &a의 오프셋이 &e{1}, {2}, {
 invalid_random_type: "&c잘못된 랜덤 타입입니다. 사용 가능한 타입: &e{0}&c."
 reward_chest_random_type_set: "&a보상 상자 &e{0} &a의 랜덤 타입이 &e{1}&a로 설정되었습니다."
 help_randomtype: "/dprc randomtype <이름> <타입> : 보상 상자의 랜덤 타입을 설정합니다."
+invalid_max_page: "&c잘못된 최대 페이지 번호입니다. 0보다 큰 숫자를 입력하세요."
+reward_chest_max_page_set: "&a보상 상자 &e{0} &a의 최대 페이지가 &e{1}&a로 설정되었습니다."
