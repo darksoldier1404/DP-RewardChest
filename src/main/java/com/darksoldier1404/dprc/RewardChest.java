@@ -37,11 +37,11 @@ public class RewardChest extends DPlugin {
     @Override
     public void onLoad() {
         PluginUtil.addPlugin(plugin, 26191);
-        data = loadDataContainer(new DataContainer<>(this, DataType.CUSTOM, "data"), Chest.class);
     }
 
     @Override
     public void onEnable() {
+        data = loadDataContainer(new DataContainer<>(this, DataType.CUSTOM, "data"), Chest.class);
         DPRCFunction.init();
         plugin.getServer().getPluginManager().registerEvents(new DPRCEvent(), plugin);
         getCommand("dprc").setExecutor(new DPRCCommand().getExecuter());
