@@ -254,11 +254,9 @@ public class DPRCFunction {
             Chest chest = entry.getValue();
             if (chest.getLocation() == null) continue;
             if (chest.getLocation().equals(block.getLocation())) {
-                System.out.println("Found reward chest block: " + entry.getKey());
                 return Tuple.of(true, entry.getKey());
             }
         }
-        System.out.println("Not a reward chest block: " + block.getLocation());
         return Tuple.of(false, null);
     }
 
