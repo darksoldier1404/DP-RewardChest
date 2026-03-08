@@ -45,7 +45,6 @@ public class RewardChest extends DPlugin {
         DPRCFunction.init();
         plugin.getServer().getPluginManager().registerEvents(new DPRCEvent(), plugin);
         getCommand("dprc").setExecutor(new DPRCCommand().getExecuter());
-        DPRCFunction.cleanupFakeItems();
     }
 
     @Override

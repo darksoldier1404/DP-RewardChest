@@ -8,7 +8,7 @@ import com.darksoldier1404.dprc.obj.ChestWeight;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
@@ -25,11 +25,103 @@ import static com.darksoldier1404.dprc.RewardChest.*;
 
 @SuppressWarnings("DataFlowIssue")
 public class DPRCFunction {
+    private static final Map<String, ItemDisplay> globalPreviews = new HashMap<>();
+    private static final Map<String, BukkitTask> previewTasks = new HashMap<>();
+    private static final Map<String, Integer> itemIndex = new HashMap<>();
+    private static BukkitTask proximityCheckTask;
+
     public static void init() {
         defaultOffset = new Location(null,
                 plugin.getConfig().getDouble("Settings.defaultOffset.x", 0),
                 plugin.getConfig().getDouble("Settings.defaultOffset.y", 0),
                 plugin.getConfig().getDouble("Settings.defaultOffset.z", 0));
+        startProximityCheckTask();
+    }
+
+    public static void startProximityCheckTask() {
+        if (proximityCheckTask != null) proximityCheckTask.cancel();
+        proximityCheckTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (Chest chest : data.values()) {
+                Location loc = chest.getLocation();
+                if (loc == null || loc.getWorld() == null) continue;
+                boolean playerNearby = loc.getWorld().getPlayers().stream()
+                        .anyMatch(p -> p.getLocation().distance(loc) <= 50); // 50 blocks
+                if (playerNearby) {
+                    if (!globalPreviews.containsKey(chest.getName()) || globalPreviews.get(chest.getName()).isDead() || !globalPreviews.get(chest.getName()).isValid()) {
+                        spawnGlobalPreviewItem(chest);
+                    }
+                } else {
+                    if (globalPreviews.containsKey(chest.getName())) {
+                        removeGlobalPreviewItem(chest.getName());
+                    }
+                }
+            }
+        }, 0L, 40L);
+    }
+
+    public static void spawnGlobalPreviewItems() {
+        for (Chest chest : data.values()) {
+            Location loc = chest.getLocation();
+            if (loc == null || loc.getWorld() == null) continue;
+            if (loc.getWorld().getPlayers().stream().anyMatch(p -> p.getLocation().distance(loc) <= 50)) {
+                spawnGlobalPreviewItem(chest);
+            }
+        }
+    }
+
+    public static void spawnGlobalPreviewItem(Chest chest) {
+        removeGlobalPreviewItem(chest.getName());
+
+        Location loc = chest.getLocation().clone().add(getOffset(chest.getLocation().getWorld(), chest.getName()));
+        if (!loc.getChunk().isLoaded()) return;
+
+        ItemDisplay display = loc.getWorld().spawn(loc, ItemDisplay.class);
+        display.setBillboard(ItemDisplay.Billboard.FIXED);
+        NamespacedKey key = new NamespacedKey(plugin, "dprc_fake_item");
+        display.getPersistentDataContainer().set(key, org.bukkit.persistence.PersistentDataType.STRING, "dprc_global_preview");
+        globalPreviews.put(chest.getName(), display);
+
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (display.isDead() || !display.isValid()) {
+                BukkitTask t = previewTasks.remove(chest.getName());
+                if (t != null) t.cancel();
+                itemIndex.remove(chest.getName());
+                return;
+            }
+            List<ItemStack> items = chest.getInventory().getAllPageItems().stream()
+                    .filter(i -> i != null && i.getType() != Material.AIR)
+                    .collect(Collectors.toList());
+            if (items.isEmpty()) {
+                display.setItemStack(new ItemStack(Material.CHEST));
+            } else {
+                int index = itemIndex.getOrDefault(chest.getName(), 0);
+                display.setItemStack(items.get(index));
+                index = (index + 1) % items.size();
+                itemIndex.put(chest.getName(), index);
+            }
+        }, 0L, 20L);
+        previewTasks.put(chest.getName(), task);
+    }
+
+    public static void removeGlobalPreviewItem(String name) {
+        if (globalPreviews.containsKey(name)) {
+            ItemDisplay display = globalPreviews.get(name);
+            if (display != null) display.remove();
+            globalPreviews.remove(name);
+        }
+        if (previewTasks.containsKey(name)) {
+            previewTasks.get(name).cancel();
+            previewTasks.remove(name);
+        }
+        itemIndex.remove(name);
+    }
+
+    public static void hideGlobalPreviews(Player p) {
+        globalPreviews.values().forEach(display -> p.hideEntity(plugin, display));
+    }
+
+    public static void showGlobalPreviews(Player p) {
+        globalPreviews.values().forEach(display -> p.showEntity(plugin, display));
     }
 
     public static boolean isExistRewardChest(String name) {
@@ -72,6 +164,7 @@ public class DPRCFunction {
         chest.setInventory(inv);
         data.put(name, chest);
         data.save(name);
+        spawnGlobalPreviewItem(chest);
     }
 
     public static void deleteRewardChest(CommandSender sender, String name) {
@@ -81,6 +174,7 @@ public class DPRCFunction {
         }
         data.delete(name);
         data.remove(name);
+        removeGlobalPreviewItem(name);
         sender.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_deleted", name));
     }
 
@@ -246,6 +340,7 @@ public class DPRCFunction {
         chest.setLocation(b.getLocation());
         data.put(name, chest);
         data.save(name);
+        spawnGlobalPreviewItem(chest);
         p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_block_set", name, world.getName(), b.getX() + ", " + b.getY() + ", " + b.getZ() + " (" + b.getType().name() + ")"));
     }
 
@@ -298,6 +393,7 @@ public class DPRCFunction {
                 weights.add(weight);
                 totalWeight += weight;
             }
+            if (totalWeight == 0) return null;
             int rand = new Random().nextInt(totalWeight);
             int sum = 0;
             for (int i = 0; i < allItems.size(); i++) {
@@ -325,6 +421,7 @@ public class DPRCFunction {
     public static void startGiveRewardChestKeyTask(Player p, String name) {
         if (!isExistRewardChest(name)) {
             p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_not_exists", name));
+            return;
         }
         if (!hasKey(p, name)) {
             p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_not_exists", name));
@@ -334,13 +431,14 @@ public class DPRCFunction {
             p.sendMessage(plugin.getPrefix() + plugin.getLang().get("reward_chest_key_already_rolling"));
             return;
         }
-        currentlyRoll.add(p.getUniqueId());
         Location loc = getRewardChestLocation(name);
         if (loc == null) {
             p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_block_not_set", name));
             return;
         }
-        List<ItemStack> items = getRewardChestItems(name);
+        currentlyRoll.add(p.getUniqueId());
+        hideGlobalPreviews(p);
+        List<ItemStack> items = getRewardChestItems(name).stream().filter(i -> i != null && i.getType() != Material.AIR).collect(Collectors.toList());
         ItemDisplay as = showFakeItem(p, name, loc, items.isEmpty() ? new ItemStack(Material.PAPER) : items.get(new Random().nextInt(items.size())));
         ItemStack item = getReward(name);
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -350,14 +448,15 @@ public class DPRCFunction {
         BukkitTask task2 = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!as.isDead()) {
                 removeFakeItem(p);
-                currentlyRoll.remove(p.getUniqueId());
             } else {
                 p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_give_failed", name));
             }
-        }, 80L);
+            currentlyRoll.remove(p.getUniqueId());
+            showGlobalPreviews(p);
+        }, 100L);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!as.isDead()) {
-                p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_give", name));
+                p.sendMessage(plugin.getPrefix() + plugin.getLang().getWithArgs("reward_chest_key_give", name, item.getItemMeta().getDisplayName()));
                 task.cancel();
                 as.setItemStack(item);
                 if (!InventoryUtils.hasEnoughSpace(p.getInventory().getStorageContents(), item)) {
@@ -373,9 +472,13 @@ public class DPRCFunction {
                         i.setAmount(i.getAmount() - 1);
                         p.getInventory().addItem(item);
                         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0F, 1F);
-                        currentlyRoll.remove(p.getUniqueId());
-                        task2.cancel();
-                        removeFakeItem(p);
+                        as.setGlowing(true);
+                        as.setItemStack(item.clone());
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            currentlyRoll.remove(p.getUniqueId());
+                            task2.cancel();
+                            removeFakeItem(p);
+                        }, 40L);
                         return;
                     }
                 }
@@ -415,18 +518,39 @@ public class DPRCFunction {
             temp.remove(stand.getUniqueId().toString());
             plugin.getConfig().set("Settings.fake_items", temp);
         }
+        showGlobalPreviews(player);
     }
 
     public static void cleanupFakeItems() {
+        if (proximityCheckTask != null) proximityCheckTask.cancel();
+        previewTasks.values().forEach(BukkitTask::cancel);
+        previewTasks.clear();
+
         List<String> temp = plugin.getConfig().getStringList("Settings.fake_items");
-        for (String uuid : temp) {
-            UUID id = UUID.fromString(uuid);
-            ArmorStand stand = Bukkit.getEntity(id) instanceof ArmorStand ? (ArmorStand) Bukkit.getEntity(id) : null;
-            if (stand != null && !stand.isDead()) {
-                stand.remove();
+        if (temp != null) {
+            for (String uuid : temp) {
+                try {
+                    UUID id = UUID.fromString(uuid);
+                    Entity entity = Bukkit.getEntity(id);
+                    if (entity != null) {
+                        entity.remove();
+                    }
+                } catch (Exception ignored) {
+                }
             }
         }
-        plugin.getConfig().set("Settings.fake_items", null);
+        plugin.getConfig().set("Settings.fake_items", new ArrayList<>());
+
+        globalPreviews.values().forEach(Entity::remove);
+        globalPreviews.clear();
+
+        for (World world : Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntitiesByClass(ItemDisplay.class)) {
+                if (entity.getPersistentDataContainer().has(new NamespacedKey(plugin, "dprc_fake_item"), org.bukkit.persistence.PersistentDataType.STRING)) {
+                    entity.remove();
+                }
+            }
+        }
     }
 
     public static Location getOffset(World world, String name) {
@@ -435,14 +559,11 @@ public class DPRCFunction {
         }
         Chest chest = data.get(name);
         Location offset = chest.getOffset();
-        if (offset != null) {
-            offset.setWorld(world);
-            return offset;
-        } else {
+        if (offset == null) {
             offset = defaultOffset.clone();
-            offset.setWorld(world);
-            return offset;
         }
+        offset.setWorld(world);
+        return offset;
     }
 
     public static void setOffset(CommandSender p, String name, String x, String y, String z) {
